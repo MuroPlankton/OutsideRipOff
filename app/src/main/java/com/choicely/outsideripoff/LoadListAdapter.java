@@ -6,7 +6,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -28,7 +28,7 @@ public class LoadListAdapter extends RecyclerView.Adapter<LoadListAdapter.LoadVi
     @NonNull
     @Override
     public LoadViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        return new LoadViewHolder(LayoutInflater.from(context).inflate(R.layout.activity_load_list, parent, false));
+        return new LoadViewHolder(LayoutInflater.from(context).inflate(R.layout.game_list_item, parent, false));
     }
 
     @Override
@@ -36,7 +36,8 @@ public class LoadListAdapter extends RecyclerView.Adapter<LoadListAdapter.LoadVi
         GameData game = gameList.get(position);
 
         holder.gameID = game.getId();
-        holder.gameButton.setText("" + game.getId());
+        holder.gameIDTextView.setText(game.getId());
+        holder.gameScoreTextView.setText(String.format("score: %d", game.getGameScore()));
     }
 
     @Override
@@ -55,15 +56,16 @@ public class LoadListAdapter extends RecyclerView.Adapter<LoadListAdapter.LoadVi
 
     public class LoadViewHolder extends RecyclerView.ViewHolder {
 
-        long gameID;
-        Button gameButton;
+        String gameID;
+        TextView gameIDTextView, gameScoreTextView;
         public LoadViewHolder(@NonNull View v) {
             super(v);
-            gameButton = v.findViewById(R.id.activity_load_list_button);
-            gameButton.setOnClickListener(onButtonClick);
+            v.setOnClickListener(onGameItemClick);
+            gameIDTextView = v.findViewById(R.id.activity_load_list_id);
+            gameScoreTextView = v.findViewById(R.id.activity_load_list_score);
         }
 
-        private View.OnClickListener onButtonClick = itemView -> {
+        private View.OnClickListener onGameItemClick = itemView -> {
             Context ctx = itemView.getContext();
             Intent intent = new Intent(ctx, GameActivity.class);
             intent.putExtra("intent_game_id", gameID);

@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">OutsideRipOff</string>
+    <string name="save_game">Save game</string>
+    <string name="new_game">New game</string>
 </resources>

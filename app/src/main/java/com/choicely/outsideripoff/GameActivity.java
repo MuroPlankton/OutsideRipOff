@@ -3,31 +3,36 @@ package com.choicely.outsideripoff;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.choicely.outsideripoff.db.RealmHelper;
 
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.UUID;
 
 import io.realm.Realm;
-import io.realm.RealmResults;
 import io.realm.Sort;
 
 public class GameActivity extends AppCompatActivity {
 
-    private Button saveButton, clickButton, powerUpButton, challengeButton;
+    private Button clickButton, powerUpButton, challengeButton;
     private TextView scoreText;
     private ProgressBar powerUpProgress;
     private CountDownTimer powerUpButtonCountDown, challengeButtonCountDown, challengeCountDown;
     private ProgressBar challengeProgress;
-    private int score = 0, scoreAdder = 0, challenger = 0;
-    private long id = 0;
-    Realm realm = Realm.getDefaultInstance();
+    private long score = 0;
+    private long scoreAdder = 0;
+    private long challenger = 0;
+    private Realm realm = Realm.getDefaultInstance();
+    private GameData currentGame;
 
     private final static String TAG = "GameActivity";
 
@@ -37,7 +42,6 @@ public class GameActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
 
-        saveButton = findViewById(R.id.activity_game_save_game);
         clickButton = findViewById(R.id.activity_game_click);
         scoreText = findViewById(R.id.activity_game_score);
         powerUpButton = findViewById(R.id.activity_game_powerup_button);
@@ -45,48 +49,64 @@ public class GameActivity extends AppCompatActivity {
         challengeButton = findViewById(R.id.activity_game_challenge_button);
         challengeProgress = findViewById(R.id.activity_game_challenge_progress);
 
-        id = getIntent().getLongExtra("intent_game_id", -1);
-        if (id == -1) {
-            GameData lastGame = realm.where(GameData.class).sort("id", Sort.DESCENDING).findFirst();
-            if (lastGame != null) {
-                id = lastGame.getId() + 1;
-            }
-            Log.d(TAG, "created game with id: " + id);
-        } else {
-            loadGame();
-            Log.d(TAG, "loaded game with id: " + id);
-        }
-        Log.d(TAG, "game opened with id: " + id);
+        loadGame();
 
         clickButton.setOnClickListener(v -> {
             score++;
             scoreText.setText("" + score);
         });
 
-        saveButton.setOnClickListener(v -> {
-            realm.beginTransaction();
-            GameData game = new GameData();
-            game.setId(id);
-            game.setGameScore(score);
-            game.setScoreAdder(scoreAdder);
-            game.setScoreChallenger(challenger);
-            Log.d(TAG, "going to save a game with score: " + score);
-            realm.insertOrUpdate(game);
-            realm.commitTransaction();
-        });
-
         powerUpTimer();
         challengeTimer();
+        scoreText.setText(String.format("%d", score));
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater =getMenuInflater();
+        inflater.inflate(R.menu.game_activity_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.edit_translation_menu_save) {
+            saveGame();
+            return true;
+        } else {
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        saveGame();
+        super.onBackPressed();
+    }
+
+    private void saveGame() {
+        realm.beginTransaction();
+        currentGame.setGameScore(score);
+        currentGame.setScoreAdder(scoreAdder);
+        currentGame.setScoreChallenger(challenger);
+        Log.d(TAG, "going to save a game with score: " + score);
+        realm.insertOrUpdate(currentGame);
+        realm.commitTransaction();
     }
 
     private void loadGame() {
-        GameData game = realm.where(GameData.class).equalTo("id", id).findFirst();
-        score = (int) game.getGameScore();
-        scoreAdder = (int) game.getScoreAdder();
-        challenger = (int) game.getScoreChallenger();
-        scoreText.setText("" + score);
-        powerUpCounter();
-        challengeCounter();
+        if (getIntent().getStringExtra("intent_game_id") == null
+                || getIntent().getStringExtra("intent_game_id").isEmpty()) {
+            currentGame = new GameData();
+            currentGame.setId(UUID.randomUUID().toString());
+        } else {
+            currentGame = realm.where(GameData.class).equalTo("id", getIntent().getStringExtra("intent_game_id")).findFirst();
+            score = currentGame.getGameScore();
+            scoreAdder = currentGame.getScoreAdder();
+            challenger = currentGame.getScoreChallenger();
+            powerUpCounter();
+            challengeCounter();
+        }
     }
 
     private void powerUpTimer() {
@@ -122,7 +142,10 @@ public class GameActivity extends AppCompatActivity {
         TimerTask powerUpTask = new TimerTask() {
             @Override
             public void run() {
-                score += scoreAdder;
+                runOnUiThread(() -> {
+                    score += scoreAdder;
+                    scoreText.setText(String.format("%d", score));
+                });
             }
         };
 
@@ -159,7 +182,10 @@ public class GameActivity extends AppCompatActivity {
         TimerTask powerUpTask = new TimerTask() {
             @Override
             public void run() {
-                score -= challenger;
+                runOnUiThread(() -> {
+                    score -= challenger;
+                    scoreText.setText(String.format("%d", score));
+                });
             }
         };
 
